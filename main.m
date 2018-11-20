@@ -20,55 +20,72 @@ for iFrame=1:10:nFrames
         % Find the checkerboard.  Return the four outer corners as a 4x2 array,
         % in the form [ [x1,y1]; [x2,y2]; ... ].
         [corners, nMatches, avgErr] = findCheckerBoard(I);
+        
+        % Uncomment to show image of Outlined Checkerboard
 %         figure,imshow(I);
-        if (nMatches > 60)
-            line([corners(1,1),corners(2,1)],[corners(1,2),corners(2,2)]);
-            line([corners(2,1),corners(3,1)],[corners(2,2),corners(3,2)]);
-            line([corners(3,1),corners(4,1)],[corners(3,2),corners(4,2)]);
-            line([corners(4,1),corners(1,1)],[corners(4,2),corners(1,2)]);
+%         line([corners(1,1),corners(2,1)],[corners(1,2),corners(2,2)], 'LineWidth', 3);
+%         line([corners(2,1),corners(3,1)],[corners(2,2),corners(3,2)], 'LineWidth', 3);
+%         line([corners(3,1),corners(4,1)],[corners(3,2),corners(4,2)], 'LineWidth', 3);
+%         line([corners(4,1),corners(1,1)],[corners(4,2),corners(1,2)], 'LineWidth', 3);
 
+        if (nMatches > 60)
+            
+            
+            % Fixed Points
             Pts = [0,0; 500,0; 500,500; 0,500];
 
+            % Reference Frame
             ref2Doutput = imref2d( ...
                 [500, 500],...% Size of output image (rows, cols)
                 [0, 500],...% xWorldLimits
                 [0, 500]);           
 
+            % Create an Orthophoto that fits the Reference Frame
             Tform = fitgeotrans(corners, Pts, 'projective');
             I1 = imwarp(I, Tform, 'OutputView', ref2Doutput);
             I2 = rgb2gray(I1);
 
-    %         I1 = imcropI1, [corners(1), corners(2), corners(3), corners(4)]);
             figure, imshow(I1);
+            
+            % Split the board 8 times in the x and y direction
             x_split = size(I1, 2)/8;
             y_split = size(I1, 1)/8;
+            
+            % Logical Array for Current Frame
             board_logical = zeros(8,8);
             
+            % Find circle pieces
             [centers, radii, metrics] = imfindcircles(I2, [15 30], 'EdgeThreshold', .0);
-    %         viscircles(centers, radii, 'EdgeColor', 'b');
+    
             for i=1:length(centers)
                 if (getIntensityDifference(I2, round(centers(i,1)), round(centers(i,2)), round(radii(i))) < 50)
                     % Draw Blue(Black) Circle
                     viscircles(centers(i,:), radii(i), 'EdgeColor', 'b');
+                    % Set Board Position to be a black Piece
                     board_logical( ceil(centers(i,2)/x_split), ceil(centers(i,1)/y_split) ) = -1;
                 else
                     % Draw White Circle
                     viscircles(centers(i,:), radii(i), 'EdgeColor', 'w');
+                    % Set Board Position to be a white Piece
                     board_logical( ceil(centers(i,2)/x_split), ceil(centers(i,1)/y_split) ) = 1;
                 end
             end
             
+            % Update the Final Board Logical
             board = board + board_logical;
 %             pause;
         end
 end
 
+% Draw the Final Board
 figure, imshow(I1)
 for i=1:size(board, 2)
     for j=1:size(board, 1)
         if board(i,j) > 10
+            % If 10 white pieces Identified Draw a white circle
             viscircles([j*x_split - x_split/2, i*y_split - y_split/2], 10, 'Color', 'w');
         elseif board(i,j) < -10
+            % If 10 black pieces Identified Draw a blue circle
             viscircles([j*x_split - x_split/2, i*y_split - y_split/2], 10, 'Color', 'b');
         end
     end
